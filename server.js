@@ -296,6 +296,11 @@ app.get('/', (req, res) => {
   res.send('Call handling system is running!');
 });
 
+// Render health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Handle common mistake of accessing /webhook instead of /voice
 app.get('/webhook', (req, res) => {
   res.status(404).send('Incorrect endpoint. Please use /voice for Twilio webhooks. See documentation for setup instructions.');
