@@ -38,10 +38,18 @@ async function initGoogleSheets() {
     if (serviceAccountKey) {
       // Parse the service account key from environment variable
       console.log('Using Google service account key from environment variable');
-      const key = JSON.parse(serviceAccountKey);
+      let key;
+      
+      try {
+        key = JSON.parse(serviceAccountKey);
+      } catch (parseError) {
+        console.error('Error parsing GOOGLE_SERVICE_ACCOUNT_KEY as JSON:', parseError.message);
+        throw parseError;
+      }
       
       // Fix the private key formatting (replace \n with actual newlines)
       if (key.private_key) {
+        console.log('Fixing private key formatting...');
         key.private_key = key.private_key.replace(/\\n/g, '\n');
       }
       
@@ -61,17 +69,25 @@ async function initGoogleSheets() {
     }
     
     // Test authentication
+    console.log('Testing Google Sheets authentication...');
     await jwtClient.authorize();
     console.log('Google Sheets authentication successful');
   } catch (error) {
     console.error('Error initializing Google Sheets:', error.message);
     console.error('Full error:', error);
+    // Don't throw the error to prevent the app from crashing
   }
 }
 
 // Function to append data to Google Sheet
 async function appendToSheet(data) {
   try {
+    // Ensure we have a valid jwtClient
+    if (!jwtClient) {
+      console.error('Google Sheets client not initialized');
+      throw new Error('Google Sheets client not initialized');
+    }
+    
     const sheets = google.sheets({ version: 'v4', auth: jwtClient });
     const spreadsheetId = process.env.SPREADSHEET_ID;
     
@@ -91,6 +107,11 @@ async function appendToSheet(data) {
   } catch (error) {
     console.error('Error appending to Google Sheet:', error.message);
     console.error('Full error:', error);
+    // Try to reinitialize the client if we get an auth error
+    if (error.message.includes('invalid_grant') || error.message.includes('Invalid JWT')) {
+      console.log('Attempting to reinitialize Google Sheets client...');
+      await initGoogleSheets();
+    }
     throw error;
   }
 }
