@@ -32,12 +32,33 @@ let jwtClient;
 // Initialize Google Sheets client
 async function initGoogleSheets() {
   try {
-    // Use the key.json file instead of environment variable
-    const keyFilePath = './key.json';
-    jwtClient = new google.auth.JWT({
-      keyFile: keyFilePath,
-      scopes: SCOPES
-    });
+    // Check if we have a service account key in environment variables
+    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+    
+    if (serviceAccountKey) {
+      // Parse the service account key from environment variable
+      console.log('Using Google service account key from environment variable');
+      const key = JSON.parse(serviceAccountKey);
+      
+      // Fix the private key formatting (replace \n with actual newlines)
+      if (key.private_key) {
+        key.private_key = key.private_key.replace(/\\n/g, '\n');
+      }
+      
+      jwtClient = new google.auth.JWT({
+        email: key.client_email,
+        key: key.private_key,
+        scopes: SCOPES
+      });
+    } else {
+      // Use the key.json file
+      console.log('Using Google service account key from key.json file');
+      const keyFilePath = './key.json';
+      jwtClient = new google.auth.JWT({
+        keyFile: keyFilePath,
+        scopes: SCOPES
+      });
+    }
     
     // Test authentication
     await jwtClient.authorize();
